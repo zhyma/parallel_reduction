@@ -1,4 +1,6 @@
-__device__ void warpReduce(volatile int* sdata, int tid)
+#ifndef WARP_REDUCE_4
+#define WARP_REDUCE_4
+__device__ void warpReduce4(volatile int* sdata, int tid)
 {
     sdata[tid] += sdata[tid + 32];
     sdata[tid] += sdata[tid + 16];
@@ -7,6 +9,7 @@ __device__ void warpReduce(volatile int* sdata, int tid)
     sdata[tid] += sdata[tid + 2];
     sdata[tid] += sdata[tid + 1];
 }
+#endif // WARP_REDUCE_4
 
 __global__ void reduce4(int* g_odata, int* g_idata, int n)
 {
@@ -25,7 +28,7 @@ __global__ void reduce4(int* g_odata, int* g_idata, int n)
             sdata[tid] += sdata[tid+s];
         __syncthreads();
     }
-    if (tid < 32) warpReduce(sdata,tid);
+    if (tid < 32) warpReduce4(sdata,tid);
 
     // write result for this block to global mem
     if (tid == 0)

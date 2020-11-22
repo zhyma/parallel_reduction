@@ -1,9 +1,10 @@
 #include <iostream>
 #include <ctime>
 #include <iomanip>
-#include "reduce_1_3.h"
+#include "reduce_0_3.h"
 #include "reduce_4.h"
 #include "reduce_5.h"
+#include "reduce_6.h"
 
 int cpu_sum(int* h_in, int h_in_len)
 {
@@ -37,6 +38,9 @@ void gpu_sum(int whichKernel, int blocks, int threads, int* g_odata, int* g_idat
             break;
         case 5:
             call_reduce5(blocks/2, threads, smem_size, g_odata, g_idata, n);
+			break;
+		case 6:
+            call_reduce6(blocks/2, threads, smem_size, g_odata, g_idata, n);
             break;
         default:
             std::cout << "Not such a function! Error!" << std::endl;
@@ -58,7 +62,9 @@ int main()
     int* out;
     int blocksize = 1024;
 
-    int gridsize = (len+blocksize-1)/blocksize;
+	int gridsize = (len+blocksize-1)/blocksize;
+	std::cout << "len/1024: " << len/1024 << std::endl;
+	std::cout << "gridsize: " <<gridsize << std::endl;
 
     cudaMallocManaged(&in, sizeof(int) * len);
     cudaMallocManaged(&out, sizeof(int) * gridsize);
@@ -79,8 +85,8 @@ int main()
 
     // GPU do the math
     int gpu_out = 0;
-    for(int k = 0; k < iter; ++k)
-    {
+    // for(int k = 0; k < iter; ++k)
+    // {
         //examine GPU time
         gpu_out = 0;
         for (int i = 0; i < gridsize; ++i)
@@ -92,15 +98,19 @@ int main()
         cudaDeviceSynchronize();
         
         // std::cout << "blocks: " << gridsize << std::endl;
-        // TODO: gpu_sum(reduce, 1, blocksize,out, out, gridsize);
+		// TODO: gpu_sum(reduce, 1, blocksize,out, out, gridsize);
+		int cnt = 0;
         for (int i = 0; i < gridsize; ++i)
         {
-            gpu_out += out[i];
-        }
+			gpu_out += out[i];
+			if (out[i] != 0)
+				cnt++;
+				
+		}
+		std::cout <<  "non-zero block: " << cnt << std::endl;
         // std::cout << std::endl;
         gpu_duration += (std::clock() - start) / (double)CLOCKS_PER_SEC;
-
-    }
+    // }
 
     if (cpu_out-gpu_out < 1 && gpu_out-cpu_out < 1)
     {
