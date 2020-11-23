@@ -1,7 +1,7 @@
-#ifndef WARP_REDUCE
-#define WARP_REDUCE
+#ifndef WARP_REDUCE_6
+#define WARP_REDUCE_6
 template <unsigned int blockSize>
-__device__ void warpReduce(volatile int* sdata, int tid)
+__device__ void warpReduce6(volatile int* sdata, int tid)
 {
     if (blockSize>=64) sdata[tid] += sdata[tid + 32];
     if (blockSize>=32) sdata[tid] += sdata[tid + 16];
@@ -10,7 +10,7 @@ __device__ void warpReduce(volatile int* sdata, int tid)
     if (blockSize>= 4) sdata[tid] += sdata[tid + 2];
     if (blockSize>= 2) sdata[tid] += sdata[tid + 1];
 }
-#endif // WARP_REDUCE
+#endif // WARP_REDUCE_6
 
 template <unsigned int blockSize>
 __global__ void reduce6(int* g_odata, int* g_idata, int n)
@@ -35,7 +35,7 @@ __global__ void reduce6(int* g_odata, int* g_idata, int n)
     if (blockSize >= 128){
         if (tid < 64) {sdata[tid] += sdata[tid+64];} __syncthreads();}
 
-    if (tid < 32) warpReduce<blockSize>(sdata,tid);
+    if (tid < 32) warpReduce6<blockSize>(sdata,tid);
 
     // write result for this block to global mem
     if (tid == 0)
@@ -45,6 +45,7 @@ __global__ void reduce6(int* g_odata, int* g_idata, int n)
 
 void call_reduce6(int blocks, int threads, int smem_size, int* g_odata, int* g_idata, int n)
 {
+    std::cout << "Use Reduction #7: Multiple Adds/Threads (reduce6)" << std::endl;
     switch(threads)
     {
         case 1024:

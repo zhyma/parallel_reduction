@@ -22,18 +22,23 @@ void gpu_sum(int whichKernel, int blocks, int threads, int* g_odata, int* g_idat
     switch (whichKernel)
     {
         case 0:
+            std::cout << "Use Reduction #1: Interleaved Addressing (reduce0)" << std::endl;
             reduce0<<<blocks, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 1:
+            std::cout << "Use Reduction #2: Interleaved Addressing (reduce1)" << std::endl;
             reduce1<<<blocks, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 2:
+            std::cout << "Use Reduction #3: Sequential Addressing (reduce3)" << std::endl;
             reduce2<<<blocks, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 3:
+            std::cout << "Use Reduction #4: First Add During Load (reduce3)" << std::endl;
             reduce3<<<blocks/2, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 4:
+            std::cout << "Use Reduction #5: Unroll the Last Warp (reduce4)" << std::endl;
             reduce4<<<blocks/2, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 5:
@@ -54,7 +59,7 @@ int main()
     std::clock_t start;
     double cpu_duration = 0;
     double gpu_duration = 0;
-    int reduce = 5;
+    int reduce = 6;
 
     int iter = 100;
     int len = 1 << 22;
