@@ -56,10 +56,9 @@ void gpu_sum(int whichKernel, int blocks, int threads, int* g_odata, int* g_idat
 
 int main()
 {
-    std::clock_t start;
+    std::clock_t start, stop;
     double cpu_duration = 0;
     double gpu_duration = 0;
-    // int reduce = 6;
 
     int iter = 100;
     int len = 1 << 22;
@@ -76,10 +75,6 @@ int main()
     for (int i = 0; i < len; ++i)
         in[i] = i;
 
-    // gpu warm up
-    gpu_sum(0, gridsize, blocksize, out, in, len);
-    std::cout << "GPU warm up is done" << std::endl;
-
     // CPU do the math
     std::cout.setf(std::ios::fixed,std::ios::floatfield);
     // Examine CPU time
@@ -92,11 +87,13 @@ int main()
 
     for (int reduce = 0; reduce < 7; ++reduce)
     {
-        std::cout << "reduce" << reduce << std::endl;
+        std::cout << "reduce" << reduce << ", ";
+        gpu_duration = 0;
         // GPU do the math
         int gpu_out = 0;
-        for(int k = 0; k < iter; ++k)
+        for(int k = 0; k < iter+1; ++k)
         {
+            // The first run is a warmup, discard.
             //examine GPU time
             gpu_out = 0;
             for (int i = 0; i < gridsize; ++i)
@@ -107,8 +104,6 @@ int main()
             gpu_sum(reduce, gridsize, blocksize, out, in, len);
             cudaDeviceSynchronize();
             
-            // std::cout << "blocks: " << gridsize << std::endl;
-            // TODO: gpu_sum(reduce, 1, blocksize,out, out, gridsize);
             int cnt = 0;
             for (int i = 0; i < gridsize; ++i)
             {
@@ -116,29 +111,28 @@ int main()
                 if (out[i] != 0)
                     cnt++;
             }
-            // std::cout <<  "non-zero block: " << cnt << std::endl;
-            // std::cout << std::endl;
-            gpu_duration += (std::clock() - start) / (double)CLOCKS_PER_SEC;
+            stop = std::clock();
+            
+            if (abs(cpu_out-gpu_out) >= 1)
+            {
+                std::cout << "ERROR!!! ";
+                std::cout << gpu_out-cpu_out << std::endl;
+            }
+
+            if (k > 0)
+                gpu_duration += (stop - start) / (double)CLOCKS_PER_SEC;
         }
 
         if (cpu_out-gpu_out < 1 && gpu_out-cpu_out < 1)
         {
             std::cout << "wolf, tank, best match!" << std::endl;
-            // std::cout << "CPU time: " << cpu_duration << " s" << std::endl;
-            // std::cout << "GPU time: " << gpu_duration << " s" << std::endl;
         }
-        else
-        {
-            // std::cout << "cpu out: " << cpu_out << std::endl;
-            // std::cout << "gpu out: " << gpu_out << std::endl;
-            std::cout << "ERROR!!! ";
-            std::cout << gpu_out-cpu_out << std::endl;
-            // break;
-        }
+
         std::cout << "GPU time: " << gpu_duration/iter << " s" << std::endl;
     }
 
     cudaFree(in);
+    cudaFree(out);
 
     return 0;
 }
