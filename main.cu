@@ -22,23 +22,23 @@ void gpu_sum(int whichKernel, int blocks, int threads, int* g_odata, int* g_idat
     switch (whichKernel)
     {
         case 0:
-            std::cout << "Use Reduction #1: Interleaved Addressing (reduce0)" << std::endl;
+            // std::cout << "Use Reduction #1: Interleaved Addressing (reduce0)" << std::endl;
             reduce0<<<blocks, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 1:
-            std::cout << "Use Reduction #2: Interleaved Addressing (reduce1)" << std::endl;
+            // std::cout << "Use Reduction #2: Interleaved Addressing (reduce1)" << std::endl;
             reduce1<<<blocks, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 2:
-            std::cout << "Use Reduction #3: Sequential Addressing (reduce3)" << std::endl;
+            // std::cout << "Use Reduction #3: Sequential Addressing (reduce2)" << std::endl;
             reduce2<<<blocks, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 3:
-            std::cout << "Use Reduction #4: First Add During Load (reduce3)" << std::endl;
+            // std::cout << "Use Reduction #4: First Add During Load (reduce3)" << std::endl;
             reduce3<<<blocks/2, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 4:
-            std::cout << "Use Reduction #5: Unroll the Last Warp (reduce4)" << std::endl;
+            // std::cout << "Use Reduction #5: Unroll the Last Warp (reduce4)" << std::endl;
             reduce4<<<blocks/2, threads, smem_size>>>(g_odata, g_idata, n);
             break;
         case 5:
@@ -59,7 +59,7 @@ int main()
     std::clock_t start;
     double cpu_duration = 0;
     double gpu_duration = 0;
-    int reduce = 6;
+    // int reduce = 6;
 
     int iter = 100;
     int len = 1 << 22;
@@ -77,7 +77,8 @@ int main()
         in[i] = i;
 
     // gpu warm up
-    gpu_sum(2, gridsize, blocksize, out, in, len);
+    gpu_sum(0, gridsize, blocksize, out, in, len);
+    std::cout << "GPU warm up is done" << std::endl;
 
     // CPU do the math
     std::cout.setf(std::ios::fixed,std::ios::floatfield);
@@ -87,53 +88,55 @@ int main()
     int cpu_out = cpu_sum(in, len);
     
     cpu_duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-
-    // GPU do the math
-    int gpu_out = 0;
-    // for(int k = 0; k < iter; ++k)
-    // {
-        //examine GPU time
-        gpu_out = 0;
-        for (int i = 0; i < gridsize; ++i)
-            out[i] = 0;
-        start = std::clock();
-        // Call GPU sum here and sync
-        
-        gpu_sum(reduce, gridsize, blocksize, out, in, len);
-        cudaDeviceSynchronize();
-        
-        // std::cout << "blocks: " << gridsize << std::endl;
-		// TODO: gpu_sum(reduce, 1, blocksize,out, out, gridsize);
-		int cnt = 0;
-        for (int i = 0; i < gridsize; ++i)
-        {
-			gpu_out += out[i];
-			if (out[i] != 0)
-				cnt++;
-				
-		}
-		std::cout <<  "non-zero block: " << cnt << std::endl;
-        // std::cout << std::endl;
-        gpu_duration += (std::clock() - start) / (double)CLOCKS_PER_SEC;
-    // }
-
-    if (cpu_out-gpu_out < 1 && gpu_out-cpu_out < 1)
-    {
-        std::cout << "wolf, tank, best match!" << std::endl;
-        // std::cout << "CPU time: " << cpu_duration << " s" << std::endl;
-        // std::cout << "GPU time: " << gpu_duration << " s" << std::endl;
-    }
-    else
-    {
-        // std::cout << "cpu out: " << cpu_out << std::endl;
-        // std::cout << "gpu out: " << gpu_out << std::endl;
-        std::cout << "ERROR!!! ";
-        std::cout << gpu_out-cpu_out << std::endl;
-        // break;
-    }
-
     std::cout << "CPU time: " << cpu_duration << " s" << std::endl;
-    std::cout << "GPU time: " << gpu_duration/iter << " s" << std::endl;
+
+    for (int reduce = 0; reduce < 7; ++reduce)
+    {
+        std::cout << "reduce" << reduce << std::endl;
+        // GPU do the math
+        int gpu_out = 0;
+        for(int k = 0; k < iter; ++k)
+        {
+            //examine GPU time
+            gpu_out = 0;
+            for (int i = 0; i < gridsize; ++i)
+                out[i] = 0;
+            start = std::clock();
+            // Call GPU sum here and sync
+            
+            gpu_sum(reduce, gridsize, blocksize, out, in, len);
+            cudaDeviceSynchronize();
+            
+            // std::cout << "blocks: " << gridsize << std::endl;
+            // TODO: gpu_sum(reduce, 1, blocksize,out, out, gridsize);
+            int cnt = 0;
+            for (int i = 0; i < gridsize; ++i)
+            {
+                gpu_out += out[i];
+                if (out[i] != 0)
+                    cnt++;
+            }
+            // std::cout <<  "non-zero block: " << cnt << std::endl;
+            // std::cout << std::endl;
+            gpu_duration += (std::clock() - start) / (double)CLOCKS_PER_SEC;
+        }
+
+        if (cpu_out-gpu_out < 1 && gpu_out-cpu_out < 1)
+        {
+            std::cout << "wolf, tank, best match!" << std::endl;
+            // std::cout << "CPU time: " << cpu_duration << " s" << std::endl;
+            // std::cout << "GPU time: " << gpu_duration << " s" << std::endl;
+        }
+        else
+        {
+            // std::cout << "cpu out: " << cpu_out << std::endl;
+            // std::cout << "gpu out: " << gpu_out << std::endl;
+            std::cout << "ERROR!!! ";
+            std::cout << gpu_out-cpu_out << std::endl;
+            // break;
+        }
+        std::cout << "GPU time: " << gpu_duration/iter << " s" << std::endl;
+    }
 
     cudaFree(in);
 

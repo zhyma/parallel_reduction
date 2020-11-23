@@ -43,7 +43,7 @@ __global__ void reduce5(int* g_odata, int* g_idata, int n)
 
 void call_reduce5(int blocks, int threads, int smem_size, int* g_odata, int* g_idata, int n)
 {
-    std::cout << "Use Reduction #6: Completely Unrolled/Threads (reduce5)" << std::endl;
+    // std::cout << "Use Reduction #6: Completely Unrolled/Threads (reduce5)" << std::endl;
     switch(threads)
     {
         case 1024:
