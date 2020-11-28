@@ -45,7 +45,7 @@ void gpu_sum(int whichKernel, int blocks, int threads, int* g_odata, int* g_idat
             call_reduce5(blocks/2, threads, smem_size, g_odata, g_idata, n);
 			break;
 		case 6:
-            call_reduce6(blocks/2, threads, smem_size, g_odata, g_idata, n);
+            call_reduce6(blocks, threads, smem_size, g_odata, g_idata, n);
             break;
         default:
             std::cout << "Not such a function! Error!" << std::endl;
@@ -91,6 +91,11 @@ int main()
         gpu_duration = 0;
         // GPU do the math
         int gpu_out = 0;
+        if (reduce == 6)
+        {
+            gridsize = 512;
+            blocksize = 256;
+        }
         for(int k = 0; k < iter+1; ++k)
         {
             // The first run is a warmup, discard.
@@ -104,12 +109,9 @@ int main()
             gpu_sum(reduce, gridsize, blocksize, out, in, len);
             cudaDeviceSynchronize();
             
-            int cnt = 0;
             for (int i = 0; i < gridsize; ++i)
             {
                 gpu_out += out[i];
-                if (out[i] != 0)
-                    cnt++;
             }
             stop = std::clock();
             
