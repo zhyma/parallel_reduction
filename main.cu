@@ -1,6 +1,9 @@
 #include <iostream>
 #include <ctime>
 #include <iomanip>
+#include <string>
+#include <fstream>
+
 #include "reduce_0_3.h"
 #include "reduce_4.h"
 #include "reduce_5.h"
@@ -91,38 +94,115 @@ int main()
         gpu_duration = 0;
         // GPU do the math
         int gpu_out = 0;
-        if (reduce == 6)
-        {
-            gridsize = 512;
-            blocksize = 256;
-        }
-        for(int k = 0; k < iter+1; ++k)
-        {
-            // The first run is a warmup, discard.
-            //examine GPU time
-            gpu_out = 0;
-            for (int i = 0; i < gridsize; ++i)
-                out[i] = 0;
-            start = std::clock();
-            // Call GPU sum here and sync
-            
-            gpu_sum(reduce, gridsize, blocksize, out, in, len);
-            cudaDeviceSynchronize();
-            
-            for (int i = 0; i < gridsize; ++i)
-            {
-                gpu_out += out[i];
-            }
-            stop = std::clock();
-            
-            if (abs(cpu_out-gpu_out) >= 1)
-            {
-                std::cout << "ERROR!!! ";
-                std::cout << gpu_out-cpu_out << std::endl;
-            }
 
-            if (k > 0)
-                gpu_duration += (stop - start) / (double)CLOCKS_PER_SEC;
+        //for reduction 1~6, the # of threads is fixed to 1024, the # of blocks is calculated
+        if (reduce < 6)
+        {
+            for(int k = 0; k < iter+1; ++k)
+            {
+                // The first run is a warmup, discard.
+                //examine GPU time
+                gpu_out = 0;
+                for (int i = 0; i < gridsize; ++i)
+                    out[i] = 0;
+                start = std::clock();
+                // Call GPU sum here and sync
+                
+                gpu_sum(reduce, gridsize, blocksize, out, in, len);
+                cudaDeviceSynchronize();
+                
+                for (int i = 0; i < gridsize; ++i)
+                {
+                    gpu_out += out[i];
+                }
+                stop = std::clock();
+                
+                if (abs(cpu_out-gpu_out) >= 1)
+                {
+                    std::cout << "ERROR!!! ";
+                    std::cout << gpu_out-cpu_out << std::endl;
+                }
+
+                if (k > 0)
+                    gpu_duration += (stop - start) / (double)CLOCKS_PER_SEC;
+            }
+        }
+        else
+        {
+            // save reduction7's performance
+            double gpu_best = 10e6;
+            std::string best_config = "";
+            std::ofstream out_file;
+            out_file.open("reduction7_time.csv", std::ios::out);
+            out_file << std::setiosflags(std::ios::fixed) << std::setprecision(6);
+
+            reduce = 6;
+            out_file <<" ,";
+            for (gridsize = 32; gridsize <=(len+32-1)/32; gridsize = gridsize *2)
+            {
+                out_file << gridsize << ",";
+            }
+            out_file << std::endl;
+            for (blocksize = 32; blocksize <= 1024; blocksize = blocksize * 2)
+            {
+                out_file << blocksize << ",";
+                for (gridsize = 32; gridsize <=(len+32-1)/32; gridsize = gridsize *2)
+                {
+                    // the total # of threads larger than the # of elements to add
+                    if (gridsize > (len+blocksize-1)/blocksize)
+                    {
+                        out_file << "-1,";
+                        continue;
+                    }
+
+                    gpu_duration = 0;
+                    // GPU do the math
+                    gpu_out = 0;
+                    for(int k = 0; k < iter+1; ++k)
+                    {
+                        // The first run is a warmup, discard.
+                        //examine GPU time
+                        gpu_out = 0;
+                        for (int i = 0; i < gridsize; ++i)
+                            out[i] = 0;
+                        start = std::clock();
+                        // Call GPU sum here and sync
+                        
+                        gpu_sum(reduce, gridsize, blocksize, out, in, len);
+                        cudaDeviceSynchronize();
+                        
+                        int cnt = 0;
+                        for (int i = 0; i < gridsize; ++i)
+                        {
+                            gpu_out += out[i];
+                            if (out[i] != 0)
+                                cnt++;
+                        }
+                        stop = std::clock();
+                        
+                        if (abs(cpu_out-gpu_out) >= 1)
+                        {
+                            std::cout << "ERROR!!! ";
+                            std::cout << gpu_out-cpu_out << std::endl;
+                        }
+
+                        if (k > 0)
+                            gpu_duration += (stop - start) / (double)CLOCKS_PER_SEC;
+                    }
+
+                    out_file << (int) (gpu_duration*1e6/iter) << ",";
+                    if (gpu_duration < gpu_best)
+                    {
+                        gpu_best = gpu_duration;
+                        best_config = "<<<" + std::to_string(gridsize) + ", " + std::to_string(blocksize) + ">>>";
+                    }
+
+                }
+                out_file << std::endl;
+            }
+            out_file.close();
+            gpu_duration = gpu_best;
+            std::cout << "config to: " << best_config << std::endl;
         }
 
         if (cpu_out-gpu_out < 1 && gpu_out-cpu_out < 1)

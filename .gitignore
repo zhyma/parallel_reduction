@@ -1,1 +1,4 @@
 /build/*
+*.csv
+*.png
+*.txt
