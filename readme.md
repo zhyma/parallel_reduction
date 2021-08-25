@@ -11,7 +11,8 @@
     or:
     > python3 reduction7.py
     
-- You can find the note [here](http://zhyma.github.io/learning_note/1.%20topics/gpu/parallel_reduction.html).
+- You can find the note [here](https://htmlpreview.github.io/?https://github.com/zhyma
+/parallel_reduction/blob/master/note.html).
 
 - Code is implement as strictly according to these slides as possible (e.g., no template to apply for different types of variables).
 
